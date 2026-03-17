@@ -2,6 +2,7 @@
 
 A cinematic, dark-themed Next.js movie review platform with IMDB data integration, shadcn/ui components, and rich interactivity.
 
+
 ## Features
 
 - **Cinematic Hero Section** — Auto-rotating fullscreen showcase with movie backdrops, metadata, and animated transitions
@@ -87,3 +88,15 @@ cinescope/
 │   └── utils.ts              # cn() utility
 └── .env.local.example
 ```
+
+## Screenshots
+
+![Screenshot 1](public/images/Screenshot%202026-03-18%20000625.png)
+
+![Screenshot 2](public/images/Screenshot%202026-03-18%20000636.png)
+
+![Screenshot 3](public/images/Screenshot%202026-03-18%20000646.png)
+
+![Screenshot 4](public/images/Screenshot%202026-03-18%20000652.png)
+
+![Screenshot 5](public/images/Screenshot%202026-03-18%20000658.png)

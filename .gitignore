@@ -1,10 +1,28 @@
+# dependencies
 node_modules/
-.env
-dist/
-build/
-*.log
-.vscode/
-.DS_Store
-.env.local
-.env.local.example
 
+# next.js
+.next/
+out/
+
+# env files (CRITICAL)
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+
+# system
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# build
+
+
+# cache
+.cache/

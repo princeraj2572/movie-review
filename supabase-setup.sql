@@ -420,6 +420,99 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- ============================================
+-- 14. CURATED_COLLECTIONS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS public.curated_collections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text,
+  slug text NOT NULL UNIQUE,
+  icon_emoji text NOT NULL,
+  banner_url text,
+  category text NOT NULL CHECK (category IN ('awards', 'genre', 'mood', 'director', 'actor', 'trending', 'trending_reviews')),
+  display_order integer DEFAULT 0,
+  is_featured boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.curated_collections ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Curated collections are viewable by everyone" ON public.curated_collections;
+
+CREATE POLICY "Curated collections are viewable by everyone" 
+  ON public.curated_collections FOR SELECT 
+  USING (true);
+
+-- ============================================
+-- 15. CURATED_COLLECTION_ITEMS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS public.curated_collection_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  collection_id uuid REFERENCES public.curated_collections(id) ON DELETE CASCADE,
+  movie_id integer NOT NULL,
+  movie_title text NOT NULL,
+  movie_poster text,
+  movie_rating numeric,
+  rank_order integer,
+  added_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.curated_collection_items ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Curated collection items are viewable by everyone" ON public.curated_collection_items;
+
+CREATE POLICY "Curated collection items are viewable by everyone" 
+  ON public.curated_collection_items FOR SELECT 
+  USING (true);
+
+-- ============================================
+-- 16. RECOMMENDATIONS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS public.recommendations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  recommended_movie_id integer NOT NULL,
+  recommended_movie_title text NOT NULL,
+  recommended_movie_poster text,
+  reason text NOT NULL CHECK (reason IN ('similar_user_ratings', 'same_genre', 'director_match', 'actor_match', 'similar_rating_pattern')),
+  confidence_score numeric DEFAULT 0.5 CHECK (confidence_score >= 0 AND confidence_score <= 1),
+  source_movie_id integer,
+  source_user_id uuid,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  viewed_at timestamp with time zone
+);
+
+ALTER TABLE public.recommendations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can see their own recommendations" ON public.recommendations;
+
+CREATE POLICY "Users can see their own recommendations" 
+  ON public.recommendations FOR SELECT 
+  USING (user_id = auth.uid());
+
+-- ============================================
+-- 17. TRENDING_REVIEWS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS public.trending_reviews (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  review_id uuid REFERENCES public.reviews(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  movie_id integer NOT NULL,
+  helpful_count integer DEFAULT 0,
+  engagement_score integer DEFAULT 0,
+  trend_date timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.trending_reviews ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Trending reviews are viewable by everyone" ON public.trending_reviews;
+
+CREATE POLICY "Trending reviews are viewable by everyone" 
+  ON public.trending_reviews FOR SELECT 
+  USING (true);
+
+-- ============================================
 -- 9. INDEXES FOR PERFORMANCE
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_reviews_movie_id ON public.reviews(movie_id);
@@ -436,6 +529,15 @@ CREATE INDEX IF NOT EXISTS idx_follows_following_id ON public.follows(following_
 CREATE INDEX IF NOT EXISTS idx_activity_user_id ON public.activity(user_id);
 CREATE INDEX IF NOT EXISTS idx_activity_created_at ON public.activity(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON public.user_achievements(user_id);
+CREATE INDEX IF NOT EXISTS idx_curated_collections_slug ON public.curated_collections(slug);
+CREATE INDEX IF NOT EXISTS idx_curated_collections_category ON public.curated_collections(category);
+CREATE INDEX IF NOT EXISTS idx_curated_collections_is_featured ON public.curated_collections(is_featured);
+CREATE INDEX IF NOT EXISTS idx_curated_collection_items_collection_id ON public.curated_collection_items(collection_id);
+CREATE INDEX IF NOT EXISTS idx_recommendations_user_id ON public.recommendations(user_id);
+CREATE INDEX IF NOT EXISTS idx_recommendations_confidence_score ON public.recommendations(confidence_score DESC);
+CREATE INDEX IF NOT EXISTS idx_recommendations_created_at ON public.recommendations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trending_reviews_trend_date ON public.trending_reviews(trend_date DESC);
+CREATE INDEX IF NOT EXISTS idx_trending_reviews_engagement_score ON public.trending_reviews(engagement_score DESC);
 
 -- ============================================
 -- SETUP COMPLETE

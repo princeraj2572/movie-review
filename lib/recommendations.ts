@@ -99,3 +99,110 @@ function formatProviders(data: any) {
     buy: format(data.buy)
   }
 }
+
+// ====== NEW DISCOVERY & RECOMMENDATIONS FEATURES ======
+
+// Get trending movies (based on recent reviews and ratings)
+export async function getTrendingMovies(limit: number = 20): Promise<any[]> {
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('movie_id')
+    .gte('created_at', oneWeekAgo)
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching trending movies:', error);
+    return [];
+  }
+
+  // Group by movie_id and count
+  const movieCounts = new Map<number, number>();
+  data?.forEach((review: any) => {
+    movieCounts.set(review.movie_id, (movieCounts.get(review.movie_id) || 0) + 1);
+  });
+
+  // Sort by count and return top movies
+  return Array.from(movieCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([movieId]) => ({ movie_id: movieId }));
+}
+
+// Get trending reviews (most helpful and engaged)
+export async function getTrendingReviews(limit: number = 10): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('trending_reviews')
+    .select(`
+      id,
+      review_id,
+      movie_id,
+      helpful_count,
+      engagement_score,
+      trend_date,
+      reviews (
+        id,
+        title,
+        body,
+        rating,
+        author_name,
+        helpful,
+        not_helpful
+      )
+    `)
+    .order('engagement_score', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching trending reviews:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+// Mark a review as trending
+export async function markReviewAsTrending(reviewId: string, movieId: number): Promise<boolean> {
+  const { error } = await supabase
+    .from('trending_reviews')
+    .insert([
+      {
+        review_id: reviewId,
+        movie_id: movieId,
+        helpful_count: 0,
+        engagement_score: 0,
+      },
+    ])
+    .on('*', () => {});
+
+  if (error && error.code !== '23505') {
+    console.error('Error marking review as trending:', error);
+    return false;
+  }
+
+  return true;
+}
+
+// Update trending review engagement score
+export async function updateTrendingReviewScore(
+  reviewId: string,
+  helpfulCount: number,
+  engagementScore: number
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('trending_reviews')
+    .update({
+      helpful_count: helpfulCount,
+      engagement_score: engagementScore,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('review_id', reviewId);
+
+  if (error) {
+    console.error('Error updating trending review score:', error);
+    return false;
+  }
+
+  return true;
+}
